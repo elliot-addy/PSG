@@ -38,7 +38,7 @@ class maternKernel:
 			nu: Int, smoothness parameter.
 			lengthscale: Float, lengthscale parameter.
 		'''
-		
+	
 		# Explicitly define common kernels.
 		if nu == 0.5:
 			def unscaled_kernel(dist):
@@ -72,12 +72,17 @@ class maternKernel:
 	def __call__(
 		self,
 		arg1,
-		arg2
+		arg2,
+		scaling = False
 	):
 		# Stationary kernel; function of distance of arguments.
 		dist = abs(arg1 - arg2)
-		return self.sigma**2 * self.unscaled_kernel(dist)
-
+		# Choose to scale with variance or not (default is no scaling, as
+		# variance is accounted for in MaternPSGEmulator.
+		if scaling == False:
+			return self.unscaled_kernel(dist)
+		elif scaling == True:
+			return self.sigma**2 * self.unscaled_kernel(dist)
 
 if __name__ == '__main__':
 	
@@ -95,7 +100,7 @@ if __name__ == '__main__':
 		sigma = 2
 		lengthscale = 3
 
-		# Plotting parameters.
+# Plotting parameters.
 		resolution = 100
 		start = -3
 		stop = 3
