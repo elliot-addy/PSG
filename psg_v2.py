@@ -48,18 +48,17 @@ def index_to_design(index):
 	return list(points)
 
 
-def construct_sg_differences(level, dim):
+def construct_sg(level, dim):
 	'''
-	Constructs the set of points in SG(level) / SG(level-1), i.e. the
-	additional points added to successive isotropic sparse grids.
+	Constructs the set of points in an isotropic sparse grid with chosen
+	parameters.
 	'''
-	# Return empty list if level is negative.
-	if level < 0:
-		return [] # [CHANGED FROM ORIGINAL]
-	else:
-		# Initialise empty list of points.
-		point_list = []
-		# Iterate over all additional indices.
+	# [TO DO] FIRST CHECK IF SPARSE GRID IS ALREADY STORED!!!!!!!!!!!!!!!!!!!!!
+	# Initialise empty list of points.
+	point_list = []
+	# Iterate over all levels.
+	for level in range(0,level+1):
+		# Iterate over all indices.
 		for index in list(to_sum_k_rec(dim, level)):
 			# Append points from each index to point list.
 			point_list += index_to_design(list(index))
@@ -78,37 +77,49 @@ def construct_psg(level, penalty, dim):
 	Returns:
 		List of Tuples, coordiates of points in penalised sparse grid.
 	'''
-	# Initialise design as empty list.
-	design = []
+	# Initialise design with single point at origin.
+	design = [np.zeros(dim)]
 
 	## ANISOTROPIC PART ##
 
-	# Iterate over all dimensions.
-	for j in range(1, dim+1):
-		# Iterate over differences between successive penalties.
-		for l in range(1, penalty[j]-penalty[j-1]+1):
-			# Find addtional points between levels, done in a lower dimension.
-			addition = construct_sg_differences(level-penalty[j]+l,j)
-			# Embed new points in higher ambient dimension. [IMPROVE]
-			ammended_addition = []
-			for point in addition:
-				ammended_addition.append(
-					list(point)+list(np.zeros(dim-j))
-				)
-			# Append new points to design.
-			design += ammended_addition
-	
-	## ISOTROPIC PART ##
-
-	# Check if isotropic part is non-empty.
-	if level > penalty[dim-1]:
-		# Iterate over levels up to level of construciton of isotropic part,
-		# given by difference between overall level and size of largest
-		# penalty.
-		for l in range(level-penalty[dim-1]):
-			# Append points from each level of isotropic part to design.
-			design += construct_sg_differences(l, dim)
-
+	# Iterate over all non-trivial dimensions.
+	for k in range(1, dim+1):
+		# Check if any compenents of dimension k exist.
+		if level >= k:
+			# Iterate over all subsapces of dimension k.
+			for J in it.combinations(range(1, dim+1), k):
+				print('J')
+				print(J)
+				# Derive penalty of component.
+				component_penalty = 0
+				for j in J:
+					component_penalty += penalty[j-1]
+				print('component penalty')
+				print(component_penalty)
+				# Check if component is non-trivial in this direction
+				if level >= k + component_penalty:
+					# Create component isotropic sparse grid of required size.
+					sg_component = construct_sg(level-component_penalty-k, k)
+					print('sg component')
+					print(sg_component)
+					# Iterate over each sub-region in k-dim subspace J, either
+					# side of each axis.
+					addition = []
+					for region in it.product([-1,1], repeat=k): #?
+						print('region')
+						print(region)
+						# Iterate over each point.
+						for point in sg_component:
+							print('point')
+							print(point)
+							# Iterate over each coordiante.
+							projected_point = np.zeros(dim)
+							for i,j in enumerate(J):
+								projected_point[j-1] += 0.25*region[i] \
+									+ 0.5*point[i] 
+								print('projected point')
+								print(projected_point)
+								design.append(projected_point)
 	return design
 
 
@@ -123,11 +134,10 @@ if __name__ == '__main__':
 		'''
 		
 		# PSG parameters.
-		dim = 3
+		dim = 2
 		level = 4
 		penalty = [1,2,3,4]
 
-		# Plotting parameters.
 		print_design = True
 
 		# Function.
