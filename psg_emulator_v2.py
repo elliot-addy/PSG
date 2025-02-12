@@ -1,6 +1,6 @@
 ## PACKAGES ##
 import numpy as np
-import matplotlib.pyplots as plt
+import matplotlib.pyplot as plt
 from scipy.linalg import cholesky, toeplitz, solve_triangular
 from math import comb
 from itertools import product
@@ -17,6 +17,41 @@ def main():
 	Plumlee 2014, 'Fast prediction of deterministic functions using sparse grid
 	experimental designs,' generalised to Penalised Sparse Grids.
 	'''
+	# Sparse grid parameters.
+	dim = 2
+	level = 1
+	penalty = [0,1,1,1]
+
+	# Emulator parameters.
+	nu_list = [0.5,1.5,0.5]
+	lengthscale_list = list(2**np.array(penalty[:dim]))
+	sigma_list = [1,1,1,1]
+
+	# Define test funciton.													 
+	def func(x):
+		'''
+		Test function used in place of simulator.
+		Parameters:
+			x: List of Floats, point in [-0.5,0.5]^dim.
+		Returns:
+			Float.
+		'''
+		return 1.0 #x[0]**2 + x[1]**2
+
+	# Plotting parameters.
+	resolution = 1000
+	
+	# Plot funciton in 1 or 2D.
+	plot_interploant(
+		dim,
+		level,
+		penalty,
+		nu_list,
+		lengthscale_list,
+		sigma_list,
+		resolution,
+		func
+	)
 
 class MaternPSGEmulator:
 	'''
@@ -38,10 +73,10 @@ class MaternPSGEmulator:
 		Attributes
 		----------
 		dim : int,
-			Dimension.		
-        level: int
+			Dimension.
+		level: int
 			Level of construction of the sparse grid.
-        penalty : list of ints
+		penalty : list of ints
 			Penalty in each dimension.
 		func : function
 			Objective function for sampling.
@@ -236,26 +271,6 @@ def plot_interploant(
 	'''
 	Creates MaternPSGEmulator object and plot for 1 and 2 dimensions.
 	'''
-	# Sparse grid parameters.
-	dim = 2
-	level = 1
-	penalty = [0,1,1,1]
-
-	# Emulator parameters.
-	nu_list = [0.5,1.5,0.5]
-	lengthscale_list = list(2**np.array(penalty[:dim]))
-	sigma_list = [1,1,1]
-
-	# Define test funciton.
-	def func(x):
-		'''
-		Test function used in place of simulator.
-		Parameters:
-			x: List of Floats, point in [-0.5,0.5]^dim.
-		Returns:
-			Float.	
-		'''
-		return 1.0 #x[0]**2 + x[1]**2 
 		
 	# Construct MaternPSGEmulator object.
 	PSGEmulatorObject = MaternPSGEmulator(
@@ -291,7 +306,7 @@ def plot_interploant(
 								)
 			return total
 	
-		x_list = np.linspace(-0.5,0.5,100)
+		x_list = np.linspace(-0.5,0.5,resolution)
 		y_list = [kernel_approximation(
 				PSGEmulatorObject,
 				x,
@@ -335,7 +350,7 @@ def plot_interploant(
 								)
 			return total
 
-		x = y = np.linspace(-0.5,0.5,100)
+		x = y = np.linspace(-0.5,0.5,resolution)
 		X, Y = np.meshgrid(x, y)
 		z = np.array(kernel_approximation(
 						PSGEmulatorObject,
@@ -350,15 +365,7 @@ def plot_interploant(
 
 		ax.plot_surface(X, Y, Z)
 		plt.show()
-
-
-
-	def main()
 		
 
 if __name__ == '__main__':
-
 	main()
-	
-
-
