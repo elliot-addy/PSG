@@ -14,7 +14,7 @@ from operator import itemgetter
 
 ## SCRIPTS ##
 
-from psg import construct_psg, to_sum_k_rec
+from psg_v2 import construct_psg, to_sum_k_rec
 from kernels import maternKernel
 
 
@@ -78,7 +78,7 @@ class MaternPSGEmulator:
 			Dictionary with sparse grid points as keys and 2-Lists as values,
 			where the first entry of list is func evaluated at the grid point.
 		'''
-		keys = construct_psg(self.level+1, self.penalty, self.dim)
+		keys = construct_psg(self.level, self.penalty, self.dim)
 		self.dict = {tuple(key): [self.func(key),0] for key in keys}
 		# Reset matrix inverse dictionary. [MAKE THIS NICER]
 		self.L_dict = {}
@@ -217,12 +217,12 @@ if __name__ == '__main__':
 		Create MaternPSGEmulator object and test.
 		'''
 		# Sparse grid parameters.
-		dim = 1
-		level = 4
+		dim = 2
+		level = 0
 		penalty = [0,0,0,0]
 		
 		# Emulator parameters.
-		nu_list = [1.5,0.5,0.5]
+		nu_list = [0.5,1.5,0.5]
 		lengthscale_list = list(2**np.array(penalty[:dim]))
 		sigma_list = [1,1,1]
 
@@ -236,7 +236,7 @@ if __name__ == '__main__':
 			Returns:
 				Float.	
 			'''
-			return x[0]**2
+			return 1.0 #x[0]**2 + x[1]**2 
 		
 		# Construct MaternPSGEmulator object.
 		PSGEmulatorObject = MaternPSGEmulator(
@@ -253,32 +253,86 @@ if __name__ == '__main__':
 		PSGEmulatorObject.calculate_weights()
 		print(PSGEmulatorObject.dict)
 
-
-		fig, ax = plt.subplots()
-		points = list(PSGEmulatorObject.dict.keys())
-		print('points')
-		print(points)
-		weights = [PSGEmulatorObject.dict[point][1] for point in points]
+		if dim == 1:
+			fig, ax = plt.subplots()
+			points = list(PSGEmulatorObject.dict.keys())
+			print('points')
+			print(points)
+			weights = [PSGEmulatorObject.dict[point][1] for point in points]
 		
-		def	kernel_approximation(MaternObject, arg, points, weights):
-			'''
-			Kernel approximation
-			'''
-			total = 0
-			for i in range(len(points)):
-				total +=  weights[i]*MaternObject.kernel_list[0](
-								points[i][0],
-								arg
-								)
-			return total
+			def	kernel_approximation(MaternObject, arg, points, weights):
+				'''
+				Kernel approximation
+				'''
+				total = 0
+				for i in range(len(points)):
+					total +=  weights[i]*MaternObject.kernel_list[0](
+									points[i][0],
+									arg
+									)
+				return total
 		
-		x_list = np.linspace(-0.5,0.5,100)
-		y_list = [kernel_approximation(PSGEmulatorObject, x, points, weights)\
-				for x in x_list]
+			x_list = np.linspace(-0.5,0.5,100)
+			y_list = [kernel_approximation(
+					PSGEmulatorObject,
+					x,
+					points, 
+					weights
+				) for x in x_list]
 
-		ax.plot(x_list,y_list)
-		plt.show()
-		print(y_list)
+			ax.plot(x_list,y_list)
+			plt.show()
+			print(y_list)
 
+		elif dim == 2:
+			fig = plt.figure()
+			ax = fig.add_subplot(projection='3d')
+			points = list(PSGEmulatorObject.dict.keys())
+			print('points')
+			print(points)
+			weights = [PSGEmulatorObject.dict[point][1] for point in points]
+			print('weights')
+			print(weights)
+			def kernel_approximation(
+					MaternObject,
+					arg1,
+					arg2,
+					points,
+					weights
+				):
+				'''
+				Kernel approximation.
+				'''
+				total = 0
+				for i in range(len(points)):
+					total += weights[i] *\
+									MaternObject.kernel_list[0](
+										points[i][0],
+										arg1
+									) *\
+									MaternObject.kernel_list[1](
+										points[i][1],
+										arg2
+									)
+				return total
+
+			x = y = np.linspace(-0.5,0.5,100)
+			X, Y = np.meshgrid(x, y)
+			z = np.array(kernel_approximation(
+							PSGEmulatorObject,
+							np.ravel(X),
+							np.ravel(Y),
+							points,
+							weights
+						)
+					)
+
+			Z = z.reshape(X.shape) 
+			
+			ax.plot_surface(X, Y, Z)
+			plt.show()
 
 	main()
+	
+
+
