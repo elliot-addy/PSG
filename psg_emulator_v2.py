@@ -19,11 +19,11 @@ def main():
 	'''
 	# Sparse grid parameters.
 	dim = 2
-	level = 1
-	penalty = [0,1,1,1]
+	level = 5
+	penalty = [0,0,1,1]
 
 	# Emulator parameters.
-	nu_list = [0.5,1.5,0.5]
+	nu_list = [1.5,1.5,0.5]
 	lengthscale_list = list(2**np.array(penalty[:dim]))
 	sigma_list = [1,1,1,1]
 
@@ -41,6 +41,9 @@ def main():
 	# Plotting parameters.
 	resolution = 1000
 	
+	# Error estimate parameter.
+	no_mc_points = 1000
+
 	# Plot funciton in 1 or 2D.
 	plot_interploant(
 		dim,
@@ -52,6 +55,22 @@ def main():
 		resolution,
 		func
 	)
+
+	error = L2_error(
+				dim,
+				level,
+				penalty,
+				nu_list,
+				lengthscale_list,
+				sigma_list,
+				no_mc_points,
+				func
+			)
+	
+	print('L2 Error')
+	print(error)
+
+	
 
 class MaternPSGEmulator:
 	'''
@@ -257,6 +276,22 @@ class MaternPSGEmulator:
 				self.contribution_scaling(multi_index) * weight_update
 			# Store new weights in dictionary.
 			self.dict.update(list(zip(keys, list(zip(data, new_weights)))))
+	
+	def __call__(self, arg):
+		'''
+		Returns value (float) of interpolant at given point (array-like) in 
+		domain
+		'''
+
+		# Evaluate separable Matern kernel at each point in sparse grid for
+		# given argument, then scale by weighting.
+		total = 0
+		for point in self.dict.keys():
+			subtotal = 1
+			for j, kernel in enumerate(self.kernel_list):
+				subtotal *= kernel(point[j], arg[j])
+			total += self.dict[point][1] * subtotal
+		return total
 
 def plot_interploant(
 		dim,
@@ -269,7 +304,27 @@ def plot_interploant(
 		func
 	):
 	'''
-	Creates MaternPSGEmulator object and plot for 1 and 2 dimensions.
+	Creates MaternPSGEmulator object and plots inteprolant for 1 and 2
+	dimensions.
+	
+	Parameters
+	----------
+	dim : int
+		Dimension of domain of funciton.
+	level : int
+		Level of construction of sparse grid.
+	penalty : list of ints
+		Penalty parameter in each dimension.
+	nu_list : list of floats
+		Smoothness in each dimension.
+	lengthscale_list : list of floats
+		Lengthscale in each dimension.
+	sigma_list : list of floats
+		Standard deviation in each dimension.
+	resolution : int
+		Resolution of plots; no. of points in each axial direction.
+	func : function
+		Function to be evaluated on a sparse grid.
 	'''
 		
 	# Construct MaternPSGEmulator object.
@@ -365,7 +420,84 @@ def plot_interploant(
 
 		ax.plot_surface(X, Y, Z)
 		plt.show()
-		
+	
+def L2_error(
+		dim,
+		level,
+		penalty,
+		nu_list,
+		lengthscale_list,
+		sigma_list,
+		no_mc_points,
+		func
+	):
+	'''
+	Caluclates relative L2 Error between Matern kernel interpolant defined on a
+	lengthscale-informed sparse grid and the true funciton.
+	
+	Parameters
+	----------
+	dim : int
+		Dimension of domain of funciton.
+	level : int
+		Level of construction of sparse grid.
+	penalty : list of ints
+		Penalty parameter in each dimension.
+	nu_list : list of floats
+		Smoothness in each dimension.
+	lengthscale_list : list of floats
+		Lengthscale in each dimension.
+	sigma_list : list of floats
+		Standard deviation in each dimension.
+	no_mc_points : int
+		Number of Monte Carlo points used to evaluate L2 integral.
+	func : function
+		Function to be evaluated on a sparse grid.
+
+	Returns
+	-------
+	L2_error : float.
+		L2 Error for given function and interpolation scheme.
+	'''
+	
+	# Construct MaternPSGEmulator object.
+	PSGEmulatorObject = MaternPSGEmulator(
+		dim,
+		level,
+		penalty,
+		func,
+		nu_list,
+		lengthscale_list,
+		sigma_list
+	)
+
+	PSGEmulatorObject.calculate_weights()
+
+	# Generat MC points for sampling.
+	mc_points = np.random.uniform(-0.5, 0.5, (no_mc_points, dim))
+
+	# Sample func at MC points.
+	mc_func_evals = np.zeros(no_mc_points)
+	for i in range(no_mc_points):
+		mc_func_evals[i] = func(mc_points[i])
+	
+	# Sample emulator at MC points.
+	mc_emulator_evals = np.zeros(no_mc_points)
+	for i in range(no_mc_points):
+		mc_emulator_evals[i] = PSGEmulatorObject(mc_points[i])
+
+	# Approximate L2 norm of f.
+	f_norm = np.sqrt(sum(mc_func_evals**2))
+
+	# Approximate absolute L2 integral.
+	absolute_error = np.sqrt(sum((mc_func_evals-mc_emulator_evals)**2))
+	
+	# Return relative error.
+	return absolute_error / f_norm
+
+
+
+
 
 if __name__ == '__main__':
 	main()

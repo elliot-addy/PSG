@@ -72,17 +72,12 @@ class maternKernel:
 	def __call__(
 		self,
 		arg1,
-		arg2,
-		scaling = False
+		arg2
 	):
 		# Stationary kernel; function of distance of arguments.
 		dist = abs(arg1 - arg2)
-		# Choose to scale with variance or not (default is no scaling, as
-		# variance is accounted for in MaternPSGEmulator.
-		if scaling == False:
-			return self.unscaled_kernel(dist)
-		elif scaling == True:
-			return self.sigma**2 * self.unscaled_kernel(dist)
+		# Return unscaled kernel, vairance still to be accounted for.
+		return self.unscaled_kernel(dist)
 
 if __name__ == '__main__':
 	
